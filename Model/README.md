@@ -1,4 +1,4 @@
-##AI Model for phishing detection
+**AI Model for phishing detection**
 
 Added the jupyter notebook for training of model and saving the trained model
 
