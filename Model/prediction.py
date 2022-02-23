@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+
 import pickle
 import pandas as pd
 
@@ -32,11 +35,6 @@ def predict(model, listOfDict):
         return "Error in model selection"
 
 
-def main():
-    x = predict(model1, listOfDict1)
-    for i in x:
-        print(i)
 
-
-if __name__ == "__main__":
-    main()
+x = predict(model1, listOfDict1)
+print(x)
