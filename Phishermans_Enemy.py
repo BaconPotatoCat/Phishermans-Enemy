@@ -12,24 +12,23 @@ if args.url:
     TLDs = (".com", ".org", ".net", ".int", ".gov", ".edu")
     data = {"Popup": 1, "SFH": 1, "HTTPS (SSL)": 1, "RequestURL": 1, "URL_of_Anchor": 1, "WebsiteTraffic": 1,
             "AgeofDomain": 1, "SubDomains": 1, "UsingIP": 1, "URL_Length": 1}
-
-    domain = getDomain(url, TLDs)
+    domain = getDomain(url)
     data["Popup"] = getPopup(url)
-    SFActions = getHTML(url)["SFH"]
-    if len(SFActions) > 0:
-        for action in SFActions:
+    SFActions = getHTML(url)
+    if SFActions:
+        for action in SFActions["SFH"]:
             if len(action) == 0:
                 print("Webpage has a form with an empty form action.")
                 data["SFH"] = -1
                 break
-            if len(action) > 0 and action[0] != "/":
+            if len(action) > 0 and action[0] != "/" and domain not in action:
                 print("Webpage has form leading to external domain: %s"%(action))
                 data["SFH"] = 0
             elif len(action) > 0:
                 print("Webpage has legitimate form action: %s" % (action))
-    reqURLs = getHTML(url)["RequestURL"]
-    if len(reqURLs) > 0:
-        for u in reqURLs:
+    reqURLs = getHTML(url)
+    if reqURLs:
+        for u in reqURLs["RequestURL"]:
             for tld in TLDs:
                 # if URL has a top level domain, it is not a local link.
                 # check if the URL belongs to an external domain.
@@ -49,21 +48,20 @@ if args.url:
         data["URL_Length"] = -1
     elif len(url) > 53:
         data["URL_Length"] = 0
-    URLAnchors = getHTML(url)["URL_of_Anchor"]
-
-    if len(URLAnchors) > 0:
-        for a in URLAnchors:
+    URLAnchors = getHTML(url)
+    if URLAnchors:
+        for a in URLAnchors["URL_of_Anchor"]:
             for tld in TLDs:
                 if tld in a and domain not in a:
                     susAnchors += 1
-                elif a == "#":
+                elif a == "":
                     susAnchors += 1
-                #elif ":void(0)" in a:
-                    #susAnchors += 1
-
         if susAnchors / len(URLAnchors) > 67/100:
             data["URL_of_Anchor"] = -1
         elif susAnchors / len(URLAnchors) > 31/100:
             data["URL_of_Anchor"] = -0
-    data["HTTPS (SSL)"] = getSSL(url)
-    print(data)
+    data["WebsiteTraffic"] = web_traffic(url)
+    data["UsingIP"] = getIfIP(domain)
+    data["SubDomains"] = getSubDomain(url)
+    data["HTTPS (SSL)"] = checkSSL(url)
+    print("\n",data)
