@@ -53,19 +53,60 @@ def getHTML(url):
         formActions = list()
         reqURLs = list()
         anchors = list()
+        extUrls = 0
+        susAnchors = 0
+        data = {"SFH": 1, "RequestURL": 1, "URL_of_Anchor": 1, "StatusBarCust": 1}
+        TLDs = (".com", ".org", ".net", ".int", ".gov", ".edu")
         page = requests.get(url, verify = False)
         html = page.content.decode("utf-8")
-        formRegex = "(form .*action) ?\= ?([\'\"]\S*[\'\"])"
-        reqRegex = "(src) ?\= ?([\'\"]\S*[\'\"])"
-        anchorRegex = "(href) ?\= ?([\'\"]\S*[\'\"])"
+        formRegex = "(action) ?\= ?([\'\"])?([^\'\"]*)([\'\"] )?"
+        reqRegex = "(src) ?\= ?([\'\"])?([^\'\"]*)([\'\"] )?"
+        anchorRegex = "(<a .*href) ?\= ?([\'\"])?([^\'\"]*)([\'\"] )?"
+        statusBarRegex = "(onMouseOver) ?\= ?([\"])?([^\"]*)(window\.status)"
         for line in html.split("\n"):
-            if "form action" in line:
-                formActions.append((re.search(formRegex,line.strip()).group(2)[1:-1]))
-            if " src" in line and not "<script" in line:
-                reqURLs.append((re.search(reqRegex,line.strip()).group(2))[1:-1])
-            if "<a href" in line:
-                anchors.append((re.search(anchorRegex,line.strip()).group(2))[1:-1])
-        return {"SFH":formActions, "RequestURL":reqURLs, "URL_of_Anchor": anchors}
+            if re.search(formRegex,line.strip()):
+                formActions.append((re.search(formRegex,line.strip()).group(3)))
+            if re.search(reqRegex,line.strip()) and not "<script" in line:
+                reqURLs.append((re.search(reqRegex,line.strip()).group(3)))
+            if re.search(anchorRegex,line.strip()):
+                anchors.append((re.search(anchorRegex,line.strip()).group(3)))
+        if re.search(statusBarRegex,html):
+            if "window.status" in re.search(statusBarRegex,html).group(3):
+                data["StatusBarCust"] = -1
+        if len(formActions) > 0:
+            for action in formActions:
+                if len(action) == 0:
+                    print("Webpage has a form with an empty form action.")
+                    data["SFH"] = -1
+                    break
+                if len(action) > 0 and action[0] != "/" and getDomain(url) not in action:
+                    print("Webpage has form leading to external domain: %s"%(action))
+                    data["SFH"] = 0
+                elif len(action) > 0:
+                    print("Webpage has legitimate form action: %s" % (action))
+        if len(reqURLs) > 0:
+            for u in reqURLs:
+                for tld in TLDs:
+                    # if URL has a top level domain, it is not a local link.
+                    # check if the URL belongs to an external domain.
+                    if tld in u and getDomain(url) not in u:
+                        extUrls += 1
+            if extUrls / len(reqURLs) > 61/100:
+                data["RequestURL"] = -1
+            elif extUrls / len(reqURLs) > 11/50:
+                data["RequestURL"] = -0
+        if len(anchors) > 0:
+            for a in anchors:
+                for tld in TLDs:
+                    if tld in a and getDomain(url) not in a:
+                        susAnchors += 1
+                    elif a == "":
+                        susAnchors += 1
+            if susAnchors / len(anchors) > 67 / 100:
+                data["URL_of_Anchor"] = -1
+            elif susAnchors / len(anchors) > 31 / 100:
+                data["URL_of_Anchor"] = -0
+        return data
     except Exception as e:
         print("HTML Error:",e)
 
@@ -85,14 +126,6 @@ def web_traffic(url):
                 return 0
     else:
         return -1
-    
-def getIfIP(url):
-    try:
-        ipaddress.ip_address(url)
-        return -1
-    except ValueError as e:
-        print(e)
-        return 1
 
 def getSubDomain(url):
     sd = extract(url).subdomain
@@ -103,6 +136,18 @@ def getSubDomain(url):
     else:
         return -1
 
+def checkRedirect(url):
+    if "//" in url[8:]:
+        return -1
+    else:
+        return 1
+    
+def getPreffixSuffix(url):
+    if "-" in url:
+        return -1
+    else:
+        return 1
+    
 def checkSSL(url):
     try:
         if url[:8] != "https://":
@@ -111,16 +156,11 @@ def checkSSL(url):
             url = extract(url).subdomain + '.' + getDomain(url)
         else:
             url = getDomain(url)
-        ssl_date = r"%b %d %H:%M:%S %Y %Z"
         context = ssl.create_default_context()
         connection = context.wrap_socket(socket.socket(socket.AF_INET), server_hostname=url, )
         connection.settimeout(3.0)
         connection.connect((url, 443))
-        ssl_info = connection.getpeercert()
-        expiry = datetime.datetime.strptime(ssl_info["notAfter"], ssl_date)
-        issued = datetime.datetime.strptime(ssl_info["notBefore"], ssl_date)
-        remaining = expiry - datetime.datetime.utcnow()
-        year = datetime.timedelta(days=365)
+        connection.close()
         ssl_connection_setting = OpenSSL.SSL.Context(OpenSSL.SSL.TLSv1_2_METHOD)
         ssl_connection_setting.set_timeout(5)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -129,12 +169,8 @@ def checkSSL(url):
             c.set_tlsext_host_name(str.encode(url))
             c.set_connect_state()
             c.do_handshake()
-            cert = c.get_peer_certificate()
             c.shutdown()
             s.close()
-        if (datetime.datetime.utcnow() - issued <= year):
-            return 0
-        else:
             return 1
     except ssl.SSLCertVerificationError:
         # Invalid SSL Cert, Issuer not trusted
@@ -149,7 +185,9 @@ def checkSSL(url):
             cert = c.get_peer_certificate()
             c.shutdown()
             s.close()
+        # Expired Cert
         if cert.has_expired():
             return -1
+        # Issuer not trusted
         else:
             return 0
