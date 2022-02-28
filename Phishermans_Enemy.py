@@ -29,7 +29,13 @@ if args.url:
         data = {"LongURL": 1, "ShortURL": 1, "Redirecting": 1, "PrefixSuffix": 1,
                 "SubDomains": 1, "HTTPS": 1, "RequestURL": 1, "AnchorURL": 1, "ServerFormHandler": 1, "StatusBarCust": 1,
                 "UsingPopupWindow": 1, "AgeofDomain": 1, "WebsiteTraffic": 1}
-        domain = getDomain(url)
+        domain = getDomain(url, 1)
+        subdoms = (getDomain(url, 3) + '.' + domain).split('.')
+        subdom = ""
+        for sd in subdoms[:-1:]:
+            subdom += sd + '.'
+        subdom = subdom.strip(".")
+
         # Get AgeofDomain attribute
         if "error" not in getAge(domain):
             age = getAge(domain)["result"]
@@ -45,20 +51,54 @@ if args.url:
         # Get ShortURL attribute
         if domain == "tinyurl.com" or domain == "bit.ly":
             data["ShortURL"] = -1
-        #Get ServerFormHandler, RequestURL, AnchorURL, and StatusBarCust attributes
+        # Get ServerFormHandler, RequestURL, AnchorURL, and StatusBarCust attributes
         HTML = getHTML(url)
-        #data["UsingPopupWindow"] = getPopup(url)
+        data["UsingPopupWindow"] = getPopup(url)
         if HTML:
-            data["ServerFormHandler"] = HTML["SFH"]
-            data["RequestURL"] = HTML["RequestURL"]
-            data["AnchorURL"] = HTML["URL_of_Anchor"]
-            data["StatusBarCust"] = HTML["StatusBarCust"]
+            data["ServerFormHandler"] = HTML["SFH"][0]
+            data["RequestURL"] = HTML["RequestURL"][0]
+            data["AnchorURL"] = HTML["URL_of_Anchor"][0]
+            data["StatusBarCust"] = HTML["StatusBarCust"][0]
         data["PrefixSuffix"] = getPreffixSuffix(url)
-        data["WebsiteTraffic"] = web_traffic(url)
-        data["SubDomains"] = getSubDomain(url)
-        data["Redirecting"] = checkRedirect(url)
-        data["HTTPS"] = checkSSL(url)
+        data["WebsiteTraffic"] = web_traffic(url)[0]
+        data["SubDomains"] = getSubDomain(subdom)
+        data["Redirecting"] = checkRedirect(getDomain(url, 4))
+        data["HTTPS"] = checkSSL(url)[0]
+        # Generate prediction based off data
         data["Prediction"] = predict(model,[data])[0]
+        # Update data to contain original values scraped for report generation
+        data["LongURL"] = (0,len(url))
+        if data["Redirecting"] == -1:
+            data["Redirecting"] = (-1, url.find("//"))
+        if data["PrefixSuffix"] == -1:
+            index = list()
+            for count, char in enumerate(url):
+                if char == "-":
+                    index.append(count)
+            data["PrefixSuffix"] = (-1, index)
+        if data["SubDomains"] != 1:
+            index = list()
+            for count, char in enumerate(subdom):
+                if char == ".":
+                    index.append(count)
+            data["SubDomains"] = (data["SubDomains"], subdom.count('.'), index)
+        if data["HTTPS"] != 1:
+            data["HTTPS"] = checkSSL(url)
+        if data["ServerFormHandler"] != 1:
+            data["ServerFormHandler"] = HTML["SFH"]
+        if data["RequestURL"] != 1:
+            data["RequestURL"] = HTML["RequestURL"]
+        if data["AnchorURL"] != 1:
+            data["AnchorURL"] = HTML["URL_of_Anchor"]
+        if data["StatusBarCust"] != 1:
+            data["StatusBarCust"] = HTML["StatusBarCust"]
+        if data["AgeofDomain"] != 1:
+            if "error" not in getAge(domain):
+                data["AgeofDomain"] = (data["AgeofDomain"], getAge(domain)["result"])
+            else:
+                data["AgeofDomain"] = (data["AgeofDomain"], "No website rank")
+        if data["WebsiteTraffic"] != 1:
+            data["WebsiteTraffic"] = web_traffic(url)
         data["URL"] = url
         data["Model"] = model
         savecsv([data])
