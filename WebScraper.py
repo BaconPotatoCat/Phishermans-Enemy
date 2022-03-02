@@ -1,7 +1,3 @@
-from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import ElementNotInteractableException, TimeoutException
 from urllib.request import urlopen
 from urllib3.exceptions import InsecureRequestWarning
 from bs4 import BeautifulSoup
@@ -32,31 +28,6 @@ def getDomain(url, section):
         return extract(url).subdomain
     elif section == 4:
         return extract(url).subdomain + '.' + extract(url).domain + '.' + extract(url).suffix
-
-def getPopup(url):
-    try:
-        options = webdriver.ChromeOptions()
-        options.headless = True
-        options.add_experimental_option("excludeSwitches", ["enable-logging"])
-        driver = webdriver.Chrome(options = options)
-        driver.get(url)
-        print("Waiting 5 seconds to see if an alert popup appears...")
-        WebDriverWait(driver,5).until(EC.alert_is_present(), 'Timed out waiting for PA creation '
-        + 'confirmation popup to appear.')
-        alert = driver.switch_to.alert
-        alert.send_keys("yes")
-        alert.dismiss()
-        driver.close()
-        print("Alert box with text input detected.")
-        return -1
-    except ElementNotInteractableException:
-        print("Alert box without text input detected.")
-        return 1
-    except TimeoutException:
-        print("No alert")
-        return 1
-    except Exception as e:
-        print(e)
 
 def getHTML(url):
     try:

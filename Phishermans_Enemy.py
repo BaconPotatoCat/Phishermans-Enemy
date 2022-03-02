@@ -7,28 +7,11 @@ parser = argparse.ArgumentParser(description='Scrape information from a website/
 parser.add_argument('-u', '--url', help='The URL to scan, inclusive of HTTP/HTTPS. (Required)', metavar='[URL]',required=True)
 parser.add_argument('-m', '--model', help='The model to be used for predicting the outcome.\n1 - GBC\n2 - RFC\n3 - XGB', metavar='[MODEL NUM]', default=1)
 
-args = parser.parse_args()
-
-if args.url:
-    url = args.url
-    model = int(args.model)
-    runPredict = False
-    if model < 1 or model > 3:
-        exit(-1)
-    if loadcsv(url):
-        print("Existing prediction for URL.")
-        rerun = input("Would you like to run a new prediction on the URL? [y/n]\n")
-        if rerun == "y":
-            runPredict = True
-        else:
-            print("Existing data is:")
-            print(loadcsv(url))
-    else:
-        runPredict = True
-    if runPredict:
+def runPredict(url, model):
+    try:
         data = {"LongURL": 1, "ShortURL": 1, "Redirecting": 1, "PrefixSuffix": 1,
                 "SubDomains": 1, "HTTPS": 1, "RequestURL": 1, "AnchorURL": 1, "ServerFormHandler": 1, "StatusBarCust": 1,
-                "UsingPopupWindow": 1, "AgeofDomain": 1, "WebsiteTraffic": 1}
+                "AgeofDomain": 1, "WebsiteTraffic": 1}
         domain = getDomain(url, 1)
         subdoms = (getDomain(url, 3) + '.' + domain).split('.')
         subdom = ""
@@ -51,9 +34,8 @@ if args.url:
         # Get ShortURL attribute
         if domain == "tinyurl.com" or domain == "bit.ly":
             data["ShortURL"] = -1
-        # Get ServerFormHandler, RequestURL, AnchorURL, and StatusBarCust attributes
+        # Get ServerFormHandler, RequestURL, AnchorURL, and StatusBarCust attributes from HTML of URL
         HTML = getHTML(url)
-        data["UsingPopupWindow"] = getPopup(url)
         if HTML:
             data["ServerFormHandler"] = HTML["SFH"][0]
             data["RequestURL"] = HTML["RequestURL"][0]
@@ -65,7 +47,7 @@ if args.url:
         data["Redirecting"] = checkRedirect(getDomain(url, 4))
         data["HTTPS"] = checkSSL(url)[0]
         # Generate prediction based off data
-        data["Prediction"] = predict(model,[data])[0]
+        data["Prediction"] = predict(int(model),[data])[0]
         # Update data to contain original values scraped for report generation
         data["LongURL"] = (0,len(url))
         if data["Redirecting"] == -1:
@@ -100,6 +82,39 @@ if args.url:
         if data["WebsiteTraffic"] != 1:
             data["WebsiteTraffic"] = web_traffic(url)
         data["URL"] = url
-        data["Model"] = model
+        data["Model"] = int(model)
         savecsv([data])
-        print("\n",data)
+        print("Prediction complete.")
+        return 1
+    except Exception as e:
+        print("Error occured:\n", e)
+        return -1
+
+def checkPrediction(url, model):
+    # Checks Past_Predictions.csv if URL and model already exists
+    if model < 1 or model > 3:
+        exit(-1)
+    if loadcsv(url):
+        print("Existing prediction for URL.")
+        return 0
+    else:
+        return 1
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    if args.url:
+        url = args.url
+        model = int(args.model)
+        if not checkPrediction(url, model):
+            rerun = ""
+            while rerun != "y" or rerun != "n":
+                rerun = input("Would you like to run a new prediction on the URL? [y/n]\n")
+                if rerun == "y":
+                    runPredict(url, model)
+                    break
+                elif rerun == "n":
+                    print("Existing data is:\n")
+                    print(loadcsv(url))
+                    break
+    else:
+        print("No URL")
