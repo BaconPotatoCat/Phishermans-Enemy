@@ -2,7 +2,7 @@ import csv
 import os.path
 
 columns = ["URL", "LongURL", "ShortURL", "Redirecting", "PrefixSuffix","SubDomains", "HTTPS", "RequestURL", "AnchorURL",
-           "ServerFormHandler", "StatusBarCust","UsingPopupWindow", "AgeofDomain", "WebsiteTraffic", "Model", "Prediction"]
+           "ServerFormHandler", "StatusBarCust", "AgeofDomain", "WebsiteTraffic", "Model", "Prediction"]
 
 def savecsv(listOfDict):
     csv_file = "Past_Predictions.csv"
