@@ -7,27 +7,30 @@ import OpenSSL.SSL
 import requests
 import re
 import json
-import ipaddress
 import ssl
 import socket
 import datetime
 
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 def getDomain(url, section):
-    # return domain
-    if section == 1:
-        if extract(url).suffix:
-            return extract(url).domain + '.' + extract(url).suffix
-        else:
-           return extract(url).domain
-    # return suffix
-    elif section == 2:
-        return extract(url).suffix
-    # return subdomain
-    elif section == 3:
-        return extract(url).subdomain
-    elif section == 4:
-        return extract(url).subdomain + '.' + extract(url).domain + '.' + extract(url).suffix
+    try:
+        # return domain
+        if section == 1:
+            if extract(url).suffix:
+                return extract(url).domain + '.' + extract(url).suffix
+            else:
+               return extract(url).domain
+        # return suffix
+        elif section == 2:
+            return extract(url).suffix
+        # return subdomain
+        elif section == 3:
+            return extract(url).subdomain
+        elif section == 4:
+            return extract(url).subdomain + '.' + extract(url).domain + '.' + extract(url).suffix
+    except Exception as e:
+        print("Error occured in getDomain()")
+        return -1
 
 def getHTML(url):
     try:
@@ -39,7 +42,7 @@ def getHTML(url):
         data = {"SFH": (1, "Legitimate forms"), "RequestURL": (1, 0), "URL_of_Anchor": (1, 0),
                 "StatusBarCust": (1, "No Status Bar Customization")}
         TLDs = (".com", ".org", ".net", ".int", ".gov", ".edu")
-        page = requests.get(url, verify = False)
+        page = requests.get(url, verify = False, timeout=5)
         html = page.content.decode("utf-8")
         formRegex = "(action) ?\= ?([\'\"])?([^\'\"]*)([\'\"] )?"
         reqRegex = "(src) ?\= ?([\'\"])?([^\'\"]*)([\'\"] )?"
@@ -86,44 +89,66 @@ def getHTML(url):
                 data["URL_of_Anchor"] = (0, susAnchors)
         return data
     except Exception as e:
-        print("HTML Error:",e)
+        print("Error occured in getHTML()")
+        return {"SFH": (-1, "Could not get HTML data"), "RequestURL": (-1, 0), "URL_of_Anchor": (-1, 0),
+                "StatusBarCust": (-1, "Could not get HTML data")}
 
 def getAge(url):
-    u = "https://input.payapi.io/v1/api/fraud/domain/age/"+url
-    req = requests.get(u, verify = False)
-    return json.loads(req.text)
+    try:
+        u = "https://www.whoisxmlapi.com/whoisserver/WhoisService?domainName="+url+"&apiKey=at_bOETttqPaZICbQF8vcyXuotgexUuo&outputFormat=JSON"
+        req = requests.get(u, verify = False, timeout=5)
+        return json.loads(req.text)
+    except Exception as e:
+        print("Error occured in getAge()")
+        return {"WhoisRecord": "dataError"}
 
 def web_traffic(url):
-    rank = BeautifulSoup(urlopen("http://data.alexa.com/data?cli=10&dat=s&url=" + url).read(), "xml")
-    if not rank.find("REACH") == None:
-        rank = int(rank.find("REACH")['RANK'])
-        if rank:
-            if rank < 100000:
-                return (1, rank)
-            elif rank > 100000:
-                return (0, rank)
-    else:
-        return (-1, "This website has no rank on Alexa's Web Traffic API.")
+    try:
+        rank = BeautifulSoup(urlopen("http://data.alexa.com/data?cli=10&dat=s&url=" + url).read(), "xml")
+        if not rank.find("REACH") == None:
+            rank = int(rank.find("REACH")['RANK'])
+            if rank:
+                if rank < 100000:
+                    return (1, rank)
+                elif rank > 100000:
+                    return (0, rank)
+        else:
+            return (-1, "This website has no rank on Alexa's Web Traffic API.")
+    except Exception as e:
+        print("Error occured in web_traffic()")
+        return (-1, "Could not get a result from Alexa's Web Traffic API.")
 
 def getSubDomain(sd):
-    if sd.count('.') == 0:
-        return 1
-    elif sd.count('.') == 1:
-        return 0
-    else:
+    try:
+        if sd.count('.') == 0:
+            return 1
+        elif sd.count('.') == 1:
+            return 0
+        else:
+            return -1
+    except Exception as e:
+        print("Error occured in getSubDomain()")
         return -1
 
 def checkRedirect(url):
-    if "//" in url:
+    try:
+        if "//" in url:
+            return -1
+        else:
+            return 1
+    except Exception as e:
+        print("Error occured in checkRedirect()")
         return -1
-    else:
-        return 1
     
 def getPreffixSuffix(url):
-    if "-" in url:
+    try:
+        if "-" in url:
+            return -1
+        else:
+            return 1
+    except Exception as e:
+        print("Error occured in getPreffixSuffix()")
         return -1
-    else:
-        return 1
     
 def checkSSL(url):
     try:
@@ -171,3 +196,6 @@ def checkSSL(url):
             issuer = cert.get_issuer()
             # return countryName, organizationName, and commonName of issuer.
             return (0, "SSL Certificate Issuer not trusted", (issuer.C,issuer.O,issuer.CN))
+    except Exception as e:
+        print("Error occured in checkSSL()")
+        return (-1, "Could not get information for the SSL certificate.")

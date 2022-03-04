@@ -3,48 +3,143 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Previous Websites</title>
+<title>Phisherman's Enemy</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.css') }}">
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script src="https://www.gstatic.com/charts/loader.js"></script>
+<style>
+body {
+    font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    background-color: #2b3035;
+    font-weight: 300;
+}
+
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+    font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    color: #fff;
+}
+
+.custom-table {
+    color: #777;
+    background-image: none !important;
+    border:none !important;
+}
+.custom-table thead tr, .custom-table thead th {
+    padding-bottom: 5px;
+    border-top-left-radius: 0.25rem !important;
+    border-top-right-radius: 0.25rem !important;
+    border: none !important;
+    color: #fff;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: .2rem;
+    background-color: #5f6974;
+}
+.custom-table tbody th, .custom-table tbody td{
+    color: #fff;
+    font-weight: 400;
+    padding-bottom: 20px;
+    padding-top: 20px;
+    font-weight: 300;
+    border: none;
+    -webkit-transition: .3s all ease;
+    -o-transition: .3s all ease;
+    transition: .3s all ease;
+    background-image: none !important;
+}
+.custom-table tbody tr {
+    -webkit-transition: .3s all ease;
+    -o-transition: .3s all ease;
+    transition: .3s all ease;
+}
+.custom-table tbody td, .custom-table thead td {
+    background-color:#343a40;
+    background-image: none !important;
+    padding-left: 12px;
+}
+.custom-table thead tr th {
+    background-color:#5f6974;
+    background-image: none !important;
+}
+.custom-table tbody tr:hover td, .custom-table tbody tr:focus td {
+    color: #fdd114;
+}
+.custom-table google-visualization-table {
+    border-radius: 0.25rem !important;
+    color: #fff !important;
+}
+.gradient {
+    background-image: none !important;
+}
+.goog-custom-button, .goog-custom-button-disabled, .goog-custom-button-inner-box, .google-visualization-table-page-prev {
+    background-color: #5f6974 !important;
+    background: #5f6974 !important;
+    color: #fff !important;
+}
+.google-visualization-table-div-page {
+    background-color: #3f474e !important;
+    border-bottom-left-radius: 0.25rem;
+    border-bottom-right-radius: 0.25rem;
+    padding: 2px 2px 2px 8px !important;
+}
+.google-visualization-table-page-number {
+    background-color: #5f6974 !important;
+    color: #fff !important;
+    padding: 2px 2px 2px 2px !important;
+}
+.google-visualization-table-table {
+    background: #2b3035 !important;
+}
+.custom-table g text {
+    color: black !important;
+    fill:#808080 !important;
+}
+.custom-table rect {
+    fill:none !important;
+}
+</style>
 <script>
-google.charts.load('current', {'packages': ['table']});
+google.charts.load('current', {'packages': ['table','corechart']});
 google.charts.setOnLoadCallback("drawTable");
+google.charts.setOnLoadCallback("drawChart");
 function drawtable(tdata)
 {
     dtable = new google.visualization.DataTable();
+    dtable.addColumn("number","ID")
     dtable.addColumn("string","URL");
     for(var i = 0;i < tdata.length; i++)
     {
-        url = tdata[i];
-        dtable.addRows([[url]]);
+        url = tdata[i][1];
+        dtable.addRows([[tdata[i][0],url]]);
     }
     table = new google.visualization.Table(document.getElementById("result"));
-    table.draw(dtable, {showRowNumber: true, width: "100%", height: "100%", allowHtml: true, page: "enable"});
+
+    table.draw(dtable, {showRowNumber: false, width: "120%", height: "100%", allowHtml: true, page: "enable"});
     
     google.visualization.events.addListener(table, "select", detailed);
+}
+function drawchart(tdata)
+{
+    phish = parseInt(tdata[15])
+    legit = parseInt(tdata[16])
+    cdata = google.visualization.arrayToDataTable([
+        ["Category","Number of Websites"],
+        ["Phishing",phish],
+        ["Legitimate",legit]
+    ]);
+
+    options = {'title':'Overall Predictions', 'width':450, 'height':400, slices: {0:{color:"orange"},1:{color:"cyan"}}};
+
+    chart = new google.visualization.PieChart(document.getElementById("pchart"));
+    chart.draw(cdata, options);
 }
 function drawdetailed(tdata)
 {
     detable = new google.visualization.DataTable();
     detable.addColumn("string","Website Details");
     detable.addColumn("string","Result");
-    console.log(tdata)
-    url = tdata[0];
-    long = tdata[1];
-    short = tdata[2];
-    redirect = tdata[3];
-    prefix = tdata[4];
-    sub = tdata[5];
-    https = tdata[6];
-    request = tdata[7];
-    anchor = tdata[8];
-    sfh = tdata[9];
-    sbc = tdata[10];
-    age = tdata[11];
-    traffic = tdata[12];
-    model = tdata[13];
-    pred = tdata[14];
-    
+
     detable.addRows([["URL",tdata[0]]]);
     detable.addRows([["LongURL",String(tdata[1])]]);
     detable.addRows([["ShortURL",String(tdata[2])]]);
@@ -60,8 +155,11 @@ function drawdetailed(tdata)
     detable.addRows([["WebsiteTraffic",String(tdata[12])]]);
     detable.addRows([["Model",String(tdata[13])]]);
     detable.addRows([["Prediction",String(tdata[14])]]);
+    
     detailedtable = new google.visualization.Table(document.getElementById("detailed"));
-    detailedtable.draw(detable, {showRowNumber: true, width: "100%", height: "100%", allowHtml: true});
+
+    detailedtable.draw(detable, {showRowNumber: false, width: "100%", height: "100%", allowHtml: true});
+    document.querySelector("#detailed").scrollIntoView();
 }
 function detailed(){
     var selection = table.getSelection();
@@ -76,7 +174,9 @@ function detailed(){
         data:{row:val},
         success:function(data)
         {
+            //Display detailed table
             drawdetailed(data);
+            drawchart(data);
         }
     });
 }
@@ -89,6 +189,7 @@ $(document).ready(function(){
             data:{query:query},
             success:function(data)
             {
+                //Display url table
                 drawtable(data);
             }
         });
@@ -105,16 +206,39 @@ $(document).ready(function(){
             load_data();
         }
     });
-	load_data();
+    load_data();
 });
 </script>
 </head>
 <body>
-
-<input type="text" name="search_input" id="search_input"> 
-<div id="result">
-</div>
-<div id="detailed">
+<div class="container position-relative">
+    <div class="row justify-content-center">
+        <div class="col-xl-6">
+            <div class="text-center text-black">
+                <!-- Page heading-->
+                <h1 class="mb-5">Phisherman's Enemy</h1>
+                <h3 class="mb-5">Search for previous websites. Click on the URL for more details!</h3>
+                    <div class="col">
+                        <div class="form-outline">
+                            <input type="search" class="form-control" id="search_input" placeholder="Search..">
+                            <label class="form-label" for="search_input">Search</label>
+                        </div>
+                    </div>
+            </div>
+        </div>
+        <div class="col-xl-12">
+            <div id="result" class="custom-table">
+            </div>
+            <br>
+            <div id="detailed" class="custom-table">
+            </div>
+            <br>
+            <div class="col-xl-5">
+                <div id="pchart" class="custom-table"></div>
+            </div>
+            
+        </div>
+    </div>
 </div>
 </body>
 </html>
