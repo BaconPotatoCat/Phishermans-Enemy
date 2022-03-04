@@ -15,13 +15,15 @@ def runPredict(url, model):
         domain = getDomain(url, 1)
         subdoms = (getDomain(url, 3) + '.' + domain).split('.')
         subdom = ""
+        age = 0
         for sd in subdoms[:-1:]:
             subdom += sd + '.'
         subdom = subdom.strip(".")
-
         # Get AgeofDomain attribute
-        if "error" not in getAge(domain):
-            age = getAge(domain)["result"]
+        if "dataError" not in getAge(url)['WhoisRecord']:
+            cdate = getAge(url)['WhoisRecord']['createdDate'][:10:].split('-')
+            createdate = datetime.date(int(cdate[0]), int(cdate[1]), int(cdate[2]))
+            age = (datetime.date.today() - createdate).days
             if age < 180:
                 data["AgeofDomain"] = -1
         else:
@@ -75,10 +77,10 @@ def runPredict(url, model):
         if data["StatusBarCust"] != 1:
             data["StatusBarCust"] = HTML["StatusBarCust"]
         if data["AgeofDomain"] != 1:
-            if "error" not in getAge(domain):
-                data["AgeofDomain"] = (data["AgeofDomain"], getAge(domain)["result"])
+            if "dataError" not in getAge(url)['WhoisRecord']:
+                data["AgeofDomain"] = (data["AgeofDomain"], age)
             else:
-                data["AgeofDomain"] = (data["AgeofDomain"], "No website rank")
+                data["AgeofDomain"] = (data["AgeofDomain"], "Unable to retrieve domain age.")
         if data["WebsiteTraffic"] != 1:
             data["WebsiteTraffic"] = web_traffic(url)
         data["URL"] = url
@@ -116,5 +118,7 @@ if __name__ == "__main__":
                     print("Existing data is:\n")
                     print(loadcsv(url))
                     break
+        else:
+            runPredict(url, model)
     else:
         print("No URL")
