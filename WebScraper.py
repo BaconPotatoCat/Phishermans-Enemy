@@ -43,7 +43,7 @@ def getHTML(url):
                 "StatusBarCust": (1, "No Status Bar Customization")}
         TLDs = (".com", ".org", ".net", ".int", ".gov", ".edu")
         page = requests.get(url, verify = False, timeout=5)
-        html = page.content.decode("utf-8")
+        html = page.content.decode("unicode_escape")
         formRegex = "(action) ?\= ?([\'\"])?([^\'\"]*)([\'\"] )?"
         reqRegex = "(src) ?\= ?([\'\"])?([^\'\"]*)([\'\"] )?"
         anchorRegex = "(<a .*href) ?\= ?([\'\"])?([^\'\"]*)([\'\"] )?"
